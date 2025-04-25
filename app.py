@@ -4,48 +4,47 @@ Created on Fri Apr 25 22:05:25 2025
 
 @author: MS1
 """
-
 import streamlit as st
-import pickle
+import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.datasets import load_iris
 import matplotlib.pyplot as plt
-from sklearn.datasets import make_blobs
-
-# โหลดโมเดล
-try:
-    with open('kmeans_model.pkl', 'rb') as f:
-        loaded_model = pickle.load(f)
-except Exception as e:
-    st.error(f"Failed to load model: {e}")
-    st.stop()
 
 
-st.set_page_config(page_title="K-Means Clustering App", layout="centered") 
+# Page title
+st.title("🔍 K-Means Clustering App with Iris Dataset")
 
+# Load dataset
+iris = load_iris()
+X = pd.DataFrame(iris.data, columns=iris.feature_names)
 
-st.title("k-Means Clustering Visualizer")
+# Sidebar - Number of clusters
+st.sidebar.header("Configure Clustering")
+k = st.sidebar.slider("Select number of clusters (k)", 2, 10, 3)
 
+# Run K-Means
+kmeans = KMeans(n_clusters=k, random_state=42)
+kmeans.fit(X)
+labels = kmeans.labels_
 
-st.subheader("Example Data for Visualization")
-st.markdown("This demo uses example data (2D) to illustrate clustering results.")
+# Dimensionality reduction for visualization
+pca = PCA(n_components=2)
+reduced = pca.fit_transform(X)
+reduced_df = pd.DataFrame(reduced, columns=["PCA1", "PCA2"])
+reduced_df["Cluster"] = labels
 
-
-X, _ = make_blobs(n_samples=300, centers=loaded_model.n_clusters, cluster_std=0.60, random_state=0)
-
-
-y_kmeans = loaded_model.predict(X)
-
-
+# Plot clusters
 fig, ax = plt.subplots()
-scatter = ax.scatter(X[:, 0], X[:, 1], c=y_kmeans, s=50, cmap='viridis')
-
-
-centers = loaded_model.cluster_centers_
-ax.scatter(centers[:, 0], centers[:, 1], c='red', s=200, alpha=0.75, marker='o', label='Centers')
-
-
-ax.set_title("K-Means Clustering Results")
+for cluster in range(k):
+    cluster_data = reduced_df[reduced_df["Cluster"] == cluster]
+    ax.scatter(cluster_data["PCA1"], cluster_data["PCA2"], label=f"Cluster {cluster}")
+ax.set_title("Clusters (2D PCA Projection)")
+ax.set_xlabel("PCA1")
+ax.set_ylabel("PCA2")
 ax.legend()
 
-
+# Show plot and data
 st.pyplot(fig)
+st.dataframe(reduced_df.head(10))
 
